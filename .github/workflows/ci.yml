@@ -1,0 +1,50 @@
+name: CI - Generate & Run JUnit Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-generation-and-execution:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Получение кода из репозитория
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Настройка Python (для генератора)
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 3. Установка зависимостей Python
+      - name: Install Python dependencies
+        run: pip install pyyaml
+
+      # 4. ГЕНЕРАЦИЯ ТЕСТОВ из YAML-спецификации
+      - name: Generate JUnit tests from spec
+        run: python generator/gen_tests.py --config config.yaml
+
+      # 5. Настройка Java
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # 6. Сборка и запуск тестов Maven
+      - name: Build and test
+        run: mvn clean test
+
+      # 7. Сохранение результатов тестов
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-test-results
+          path: target/surefire-reports/
